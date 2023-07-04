@@ -69,8 +69,8 @@ func NewFetcher(kubewardenNamespace string, policyServerURL string) (*Fetcher, e
 func (f *Fetcher) GetResourcesForPolicies(ctx context.Context, policies []policiesv1.Policy, namespace string) ([]AuditableResources, error) {
 	auditableResources := []AuditableResources{}
 	gvrMap := createGVRPolicyMap(policies)
-	for gvr, policies := range gvrMap {
-		resources, err := f.getResourcesDynamically(ctx, gvr.Group, gvr.Version, gvr.Resource, namespace)
+	for resourceFilter, policies := range gvrMap {
+		resources, err := f.getResourcesDynamically(ctx, &resourceFilter, namespace)
 		// continue if resource doesn't exist.
 		if apimachineryerrors.IsNotFound(err) {
 			continue
@@ -116,11 +116,11 @@ func (f *Fetcher) isNamespacedResource(gvr schema.GroupVersionResource) (bool, e
 func (f *Fetcher) GetClusterWideResourcesForPolicies(ctx context.Context, policies []policiesv1.Policy) ([]AuditableResources, error) {
 	auditableResources := []AuditableResources{}
 	gvrMap := createGVRPolicyMap(policies)
-	for gvr, policies := range gvrMap {
-		isNamespaced, err := f.isNamespacedResource(gvr)
+	for resourceFilter, policies := range gvrMap {
+		isNamespaced, err := f.isNamespacedResource(resourceFilter.groupVersionResource)
 		if err != nil {
 			if errors.Is(err, constants.ErrResourceNotFound) {
-				log.Warn().Msg(fmt.Sprintf("API resource (%s) not found", gvr.String()))
+				log.Warn().Msg(fmt.Sprintf("API resource (%s) not found", resourceFilter.groupVersionResource.String()))
 				continue
 			}
 			return nil, err
@@ -128,7 +128,7 @@ func (f *Fetcher) GetClusterWideResourcesForPolicies(ctx context.Context, polici
 		if isNamespaced {
 			continue
 		}
-		resources, err := f.getClusterWideResourcesDynamically(ctx, gvr.Group, gvr.Version, gvr.Resource)
+		resources, err := f.getClusterWideResourcesDynamically(ctx, &resourceFilter)
 		// continue if resource doesn't exist.
 		if apimachineryerrors.IsNotFound(err) {
 			continue
@@ -148,16 +148,22 @@ func (f *Fetcher) GetClusterWideResourcesForPolicies(ctx context.Context, polici
 }
 
 func (f *Fetcher) getResourcesDynamically(ctx context.Context,
-	group string, version string, resource string, namespace string) (
+	resourceFilter *resourceFilter,
+	namespace string) (
 	*unstructured.UnstructuredList, error) {
 	resourceID := schema.GroupVersionResource{
-		Group:    group,
-		Version:  version,
-		Resource: resource,
+		Group:    resourceFilter.groupVersionResource.Group,
+		Version:  resourceFilter.groupVersionResource.Version,
+		Resource: resourceFilter.groupVersionResource.Resource,
 	}
 	var list *unstructured.UnstructuredList
 	var err error
-	list, err = f.dynamicClient.Resource(resourceID).Namespace(namespace).List(ctx, metav1.ListOptions{})
+	listOptions := metav1.ListOptions{}
+	if resourceFilter.objectSelector != nil {
+		labelSelector := metav1.FormatLabelSelector(resourceFilter.objectSelector)
+		listOptions = metav1.ListOptions{LabelSelector: labelSelector}
+	}
+	list, err = f.dynamicClient.Resource(resourceID).Namespace(namespace).List(ctx, listOptions)
 
 	if err != nil {
 		return nil, err
@@ -166,17 +172,21 @@ func (f *Fetcher) getResourcesDynamically(ctx context.Context,
 	return list, nil
 }
 
-func (f *Fetcher) getClusterWideResourcesDynamically(ctx context.Context,
-	group string, version string, resource string) (
+func (f *Fetcher) getClusterWideResourcesDynamically(ctx context.Context, resourceFilter *resourceFilter) (
 	*unstructured.UnstructuredList, error) {
 	resourceID := schema.GroupVersionResource{
-		Group:    group,
-		Version:  version,
-		Resource: resource,
+		Group:    resourceFilter.groupVersionResource.Group,
+		Version:  resourceFilter.groupVersionResource.Version,
+		Resource: resourceFilter.groupVersionResource.Resource,
 	}
 	var list *unstructured.UnstructuredList
 	var err error
-	list, err = f.dynamicClient.Resource(resourceID).List(ctx, metav1.ListOptions{})
+	listOptions := metav1.ListOptions{}
+	if resourceFilter.objectSelector != nil {
+		labelSelector := metav1.FormatLabelSelector(resourceFilter.objectSelector)
+		listOptions = metav1.ListOptions{LabelSelector: labelSelector}
+	}
+	list, err = f.dynamicClient.Resource(resourceID).List(ctx, listOptions)
 
 	if err != nil {
 		return nil, err
@@ -185,8 +195,16 @@ func (f *Fetcher) getClusterWideResourcesDynamically(ctx context.Context,
 	return list, nil
 }
 
-func createGVRPolicyMap(policies []policiesv1.Policy) map[schema.GroupVersionResource][]policiesv1.Policy {
-	resources := make(map[schema.GroupVersionResource][]policiesv1.Policy)
+// The resourceFilter type is struct used to store the two piece of data needed
+// to properly fetch the resources. The GroupVersionResource and LabelSelector.
+// This type is used only inside the resources package.
+type resourceFilter struct {
+	groupVersionResource schema.GroupVersionResource
+	objectSelector       *metav1.LabelSelector
+}
+
+func createGVRPolicyMap(policies []policiesv1.Policy) map[resourceFilter][]policiesv1.Policy {
+	resources := make(map[resourceFilter][]policiesv1.Policy)
 	for _, policy := range policies {
 		addPolicyResources(resources, policy)
 	}
@@ -196,7 +214,7 @@ func createGVRPolicyMap(policies []policiesv1.Policy) map[schema.GroupVersionRes
 
 // All resources that matches the rules must be evaluated. Since rules provides an array of groups, another of version
 // and another of resources we need to create all possible GVR from these arrays.
-func addPolicyResources(resources map[schema.GroupVersionResource][]policiesv1.Policy, policy policiesv1.Policy) {
+func addPolicyResources(resources map[resourceFilter][]policiesv1.Policy, policy policiesv1.Policy) {
 	for _, rules := range policy.GetRules() {
 		for _, resource := range rules.Resources {
 			for _, version := range rules.APIVersions {
@@ -206,7 +224,11 @@ func addPolicyResources(resources map[schema.GroupVersionResource][]policiesv1.P
 						Version:  version,
 						Resource: resource,
 					}
-					resources[gvr] = append(resources[gvr], policy)
+					resourceFilter := resourceFilter{
+						groupVersionResource: gvr,
+						objectSelector:       policy.GetObjectSelector(),
+					}
+					resources[resourceFilter] = append(resources[resourceFilter], policy)
 				}
 			}
 		}
