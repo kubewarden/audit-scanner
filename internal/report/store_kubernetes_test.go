@@ -39,7 +39,7 @@ var npr = report.PolicyReport{
 	},
 }
 
-func TestAddPolicyReportStore(t *testing.T) {
+func TestAddKubernetesPolicyReportStore(t *testing.T) {
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(
 		v1alpha2.SchemeGroupVersion,
@@ -51,7 +51,7 @@ func TestAddPolicyReportStore(t *testing.T) {
 
 	t.Run("Add then Get namespaced PolicyReport", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		_, err := store.GetPolicyReport(npr.GetNamespace())
 		if err == nil {
 			t.Fatalf("Should not be found in empty Store")
@@ -71,7 +71,7 @@ func TestAddPolicyReportStore(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).
 			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).
 			Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		_ = store.SaveClusterPolicyReport(&cpr)
 		_, err := store.GetClusterPolicyReport(cpr.ObjectMeta.Name)
 		if err != nil {
@@ -80,7 +80,7 @@ func TestAddPolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestUpdatePolicyReportStore(t *testing.T) {
+func TestUpdateKubernetesPolicyReportStore(t *testing.T) {
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(
 		v1alpha2.SchemeGroupVersion,
@@ -94,7 +94,7 @@ func TestUpdatePolicyReportStore(t *testing.T) {
 	t.Run("Update then Get namespaced PolicyReport", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).
 			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 
 		err := store.SavePolicyReport(&npr)
 		if err != nil {
@@ -127,7 +127,7 @@ func TestUpdatePolicyReportStore(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).
 			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).
 			Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 
 		err := store.SaveClusterPolicyReport(&cpr)
 		if err != nil {
@@ -156,7 +156,7 @@ func TestUpdatePolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestDeletePolicyReportStore(t *testing.T) {
+func TestDeleteKubernetesPolicyReportStore(t *testing.T) {
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(
 		v1alpha2.SchemeGroupVersion,
@@ -169,7 +169,7 @@ func TestDeletePolicyReportStore(t *testing.T) {
 	t.Run("Delete then Get namespaced PolicyReport", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).
 			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		_, err := store.GetPolicyReport(npr.GetNamespace())
 		if err != nil {
 			t.Errorf("Should be found in Store after adding report to the store")
@@ -185,7 +185,7 @@ func TestDeletePolicyReportStore(t *testing.T) {
 	t.Run("Remove all namespaced", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).
 			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		_ = store.SavePolicyReport(&npr)
 
 		_ = store.RemoveAllNamespacedPolicyReports()
@@ -196,7 +196,7 @@ func TestDeletePolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestSaveReports(t *testing.T) {
+func TestSaveKubernetesReports(t *testing.T) {
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(
 		v1alpha2.SchemeGroupVersion,
@@ -208,7 +208,7 @@ func TestSaveReports(t *testing.T) {
 
 	t.Run("Save ClusterPolicyReport (create)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		report := report.NewClusterPolicyReport("testing")
 		if err := store.SaveClusterPolicyReport(&report); err != nil {
 			// always updates ClusterPolicyReport, store initializes with blank
@@ -219,7 +219,7 @@ func TestSaveReports(t *testing.T) {
 
 	t.Run("Save PolicyReport (create)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		npr2 := report.PolicyReport{
 			v1alpha2.PolicyReport{
 				ObjectMeta: metav1.ObjectMeta{
@@ -247,7 +247,7 @@ func TestSaveReports(t *testing.T) {
 
 	t.Run("Save PolicyReport (update)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewPolicyReportStore(client)
+		store := report.MockNewKubernetesPolicyReportStore(client)
 		// copy first resource version
 		upr := npr
 		// do some change

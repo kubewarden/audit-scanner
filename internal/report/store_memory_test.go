@@ -1,0 +1,173 @@
+package report_test
+
+import (
+	"github.com/stretchr/testify/require"
+	"testing"
+
+	"github.com/kubewarden/audit-scanner/internal/report"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/wg-policy-prototypes/policy-report/pkg/api/wgpolicyk8s.io/v1alpha2"
+)
+
+func TestAddMemoryPolicyReportStore(t *testing.T) {
+	t.Run("Add then Get namespaced PolicyReport", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		_, err = store.GetPolicyReport(npr.GetNamespace())
+		require.Error(t, err, "Should not be found in empty Store")
+
+		err = store.SavePolicyReport(&npr)
+		require.NoError(t, err, "Cannot save report: %v", err)
+
+		_, err = store.GetPolicyReport(npr.GetNamespace())
+		require.NoError(t, err, "Should be found in Store after adding report to the store: %v.", err)
+	})
+
+	t.Run("Clusterwide Add then Get", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		err = store.SaveClusterPolicyReport(&cpr)
+		require.NoError(t, err)
+
+		_, err = store.GetClusterPolicyReport(cpr.ObjectMeta.Name)
+		require.NoError(t, err, "Should be found in Store after adding report to the store")
+	})
+}
+
+func TestUpdateMemoryPolicyReportStore(t *testing.T) {
+	//nolint:dupl
+	t.Run("Update then Get namespaced PolicyReport", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		err = store.SavePolicyReport(&npr)
+		require.NoError(t, err, "Cannot save PolicyReport: %v", err)
+
+		resource, err := store.GetPolicyReport(npr.GetNamespace())
+		require.NoError(t, err, "Should be found in Store after adding PolicyReport report to the store: %v", err)
+		if resource.Summary.Skip != 0 {
+			t.Errorf("Expected Summary.Skip to be 0")
+		}
+
+		// copy first resource version
+		upr := resource
+		// do some change in the resource
+		upr.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
+
+		err = store.UpdatePolicyReport(&upr)
+		require.NoError(t, err, "Cannot update PolicyReport: %v", err)
+
+		r2, _ := store.GetPolicyReport(npr.GetNamespace())
+		if r2.Summary.Skip != 1 {
+			t.Errorf("PolicyReport Expected Summary.Skip to be 1 after update")
+		}
+	})
+
+	//nolint:dupl
+	t.Run("Clusterwide Update then Get", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		err = store.SaveClusterPolicyReport(&cpr)
+		require.NoError(t, err, "Cannot save ClusterPolicyReport: %v", err)
+
+		resource, err := store.GetClusterPolicyReport(cpr.GetName())
+		require.NoError(t, err, "Should be found in Store after adding ClusterPolicyReport report to the store: %v", err)
+		if resource.Summary.Skip != 0 {
+			t.Errorf("Expected Summary.Skip to be 0")
+		}
+
+		cprWithSkip := resource
+		cprWithSkip.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
+
+		err = store.UpdateClusterPolicyReport(&cprWithSkip)
+		require.NoError(t, err, "Cannot update ClusterPolicyReport: %v", err)
+
+		r2, _ := store.GetClusterPolicyReport(cprWithSkip.GetName())
+		require.Equal(t, 1, r2.Summary.Skip, "ClusterPolicyReport Expected Summary.Skip to be 1 after update")
+	})
+}
+
+func TestDeleteMemoryPolicyReportStore(t *testing.T) {
+	t.Run("Delete then Get namespaced PolicyReport", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		err = store.SavePolicyReport(&npr)
+		require.NoError(t, err, "Cannot save PolicyReport: %v", err)
+
+		_, err = store.GetPolicyReport(npr.GetNamespace())
+		require.NoError(t, err, "Should be found in Store after adding report to the store")
+
+		_ = store.RemovePolicyReport(npr.GetNamespace())
+		_, err = store.GetPolicyReport(npr.GetNamespace())
+		require.Error(t, err, "Should not be found after Remove report from Store")
+	})
+
+	t.Run("Remove all namespaced", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		_ = store.SavePolicyReport(&npr)
+
+		_ = store.RemoveAllNamespacedPolicyReports()
+		_, err = store.GetPolicyReport(npr.GetNamespace())
+		require.Error(t, err, "Should have no results after CleanUp")
+	})
+}
+
+func TestSaveMemoryReports(t *testing.T) {
+	t.Run("Save ClusterPolicyReport (create)", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		report := report.NewClusterPolicyReport("testing")
+		err = store.SaveClusterPolicyReport(&report)
+		// always updates ClusterPolicyReport, store initializes with blank
+		// ClusterPolicReport
+		require.NoError(t, err, "Should not return errors: %v", err)
+
+	})
+
+	t.Run("Save PolicyReport (create)", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		npr2 := report.PolicyReport{
+			v1alpha2.PolicyReport{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "polr-ns-test2",
+					Namespace:         "test2",
+					CreationTimestamp: metav1.Now(),
+				},
+				Summary: v1alpha2.PolicyReportSummary{},
+				Results: []*v1alpha2.PolicyReportResult{},
+			},
+		}
+
+		err = store.SavePolicyReport(&npr2)
+		require.NoError(t, err, "Should not return errors: %v", err)
+
+		_, err = store.GetPolicyReport(npr2.GetNamespace())
+		require.NoError(t, err, "Should not return errors: %v", err)
+	})
+
+	t.Run("Save PolicyReport (update)", func(t *testing.T) {
+		store, err := report.NewMemoryPolicyReportStore()
+		require.NoError(t, err)
+
+		// copy first resource version
+		upr := npr
+		// do some change
+		upr.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
+
+		err = store.SavePolicyReport(&upr)
+		require.NoError(t, err, "Should not return errors: %v", err)
+
+		getObj, err := store.GetPolicyReport(npr.GetNamespace())
+		require.NoError(t, err, "Should not return errors: %v", err)
+		require.Equal(t, 1, getObj.Summary.Skip, "Expected Summary.Skip to be 1 after update. Object returned: %v", getObj)
+	})
+}

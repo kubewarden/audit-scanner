@@ -194,7 +194,7 @@ func (f *Fetcher) getAdmissionPolicies(namespace string) ([]policiesv1.Admission
 	return policies.Items, nil
 }
 
-func newClient() (client.Client, error) { //nolint:ireturn
+func newClient() (client.Client, error) { //nolint:ireturn // no specific client type
 	config := ctrl.GetConfigOrDie()
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(

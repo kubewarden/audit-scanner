@@ -51,22 +51,19 @@ type Scanner struct {
 	reportStore      report.PolicyReportStore
 	// http client used to make requests against the Policy Server
 	httpClient http.Client
-	printJSON  bool
 }
 
 // NewScanner creates a new scanner with the PoliciesFetcher provided. If
 // insecureClient is false, it will read the caCertFile and add it to the in-app
 // cert trust store. This gets used by the httpCLient when connection to
 // PolicyServers endpoints.
-func NewScanner(policiesFetcher PoliciesFetcher, resourcesFetcher ResourcesFetcher,
-	printJSON bool,
-	insecureClient bool, caCertFile string,
+func NewScanner(
+	store report.PolicyReportStore,
+	policiesFetcher PoliciesFetcher,
+	resourcesFetcher ResourcesFetcher,
+	insecureClient bool,
+	caCertFile string,
 ) (*Scanner, error) {
-	report, err := report.NewPolicyReportStore()
-	if err != nil {
-		return nil, err
-	}
-
 	// Get the SystemCertPool to build an in-app cert pool from it
 	// Continue with an empty pool on error
 	rootCAs, _ := x509.SystemCertPool()
@@ -104,7 +101,7 @@ func NewScanner(policiesFetcher PoliciesFetcher, resourcesFetcher ResourcesFetch
 		log.Warn().Msg("connecting to PolicyServers endpoints without validating TLS connection")
 	}
 
-	return &Scanner{policiesFetcher, resourcesFetcher, *report, httpClient, printJSON}, nil
+	return &Scanner{policiesFetcher, resourcesFetcher, store, httpClient}, nil
 }
 
 // ScanNamespace scans resources for a given namespace.
@@ -158,13 +155,6 @@ func (s *Scanner) ScanNamespace(nsName string) error {
 	}
 	log.Info().Str("namespace", nsName).Msg("namespace scan finished")
 
-	if s.printJSON {
-		str, err := s.reportStore.ToJSON()
-		if err != nil {
-			log.Error().Err(err).Msg("error marshaling reportStore to JSON")
-		}
-		fmt.Println(str) //nolint:forbidigo
-	}
 	return nil
 }
 
@@ -228,13 +218,6 @@ func (s *Scanner) ScanClusterWideResources() error {
 	}
 	log.Info().Msg("clusterwide resources scan finished")
 
-	if s.printJSON {
-		str, err := s.reportStore.ToJSON()
-		if err != nil {
-			log.Error().Err(err).Msg("error marshaling reportStore to JSON")
-		}
-		fmt.Println(str) //nolint:forbidigo
-	}
 	return nil
 }
 
