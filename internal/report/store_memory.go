@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"golang.org/x/exp/maps"
 
@@ -20,8 +19,6 @@ type MemoryPolicyReportStore struct {
 
 	// cprCache is a map between a name and a ClusterPolicyReport
 	cprCache map[string]ClusterPolicyReport
-
-	mutex sync.RWMutex
 }
 
 func NewMemoryPolicyReportStore() (*MemoryPolicyReportStore, error) {
@@ -32,8 +29,6 @@ func NewMemoryPolicyReportStore() (*MemoryPolicyReportStore, error) {
 }
 
 func (s *MemoryPolicyReportStore) GetPolicyReport(namespace string) (PolicyReport, error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
 	report, found := s.prCache[namespace]
 
 	if !found {
@@ -53,63 +48,52 @@ func (s *MemoryPolicyReportStore) GetClusterPolicyReport(name string) (ClusterPo
 		name = getClusterReportName(name)
 	}
 
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
 	report, found := s.cprCache[name]
-
 	if !found {
 		return ClusterPolicyReport{}, constants.ErrResourceNotFound
 	}
 
+	log.Debug().Dict("dict", zerolog.Dict().
+		Str("report name", report.GetName()).
+		Str("report resourceVersion", report.GetResourceVersion())).
+		Msg("ClusterPolicyReport found")
 	return report, nil
 }
 
 func (s *MemoryPolicyReportStore) RemovePolicyReport(namespace string) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	delete(s.prCache, namespace)
 
 	return nil
 }
 
 func (s *MemoryPolicyReportStore) RemoveAllNamespacedPolicyReports() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 	s.prCache = make(map[string]PolicyReport)
 
 	return nil
 }
 
 func (s *MemoryPolicyReportStore) updatePolicyReport(report *PolicyReport) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	s.prCache[report.GetNamespace()] = *report
 
 	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("report resourceVersion", report.GetResourceVersion()).
-			Str("summary", summary),
-		).Msg("updated PolicyReport")
+	log.Debug().Dict("dict", zerolog.Dict().
+		Str("report name", report.GetName()).
+		Str("report ns", report.GetNamespace()).
+		Str("report resourceVersion", report.GetResourceVersion()).
+		Str("summary", summary)).
+		Msg("updated PolicyReport")
 	return nil
 }
 
 func (s *MemoryPolicyReportStore) updateClusterPolicyReport(report *ClusterPolicyReport) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	s.cprCache[report.GetName()] = *report
 
 	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("summary", summary),
-		).Msg("updated ClusterPolicyReport")
+	log.Debug().Dict("dict", zerolog.Dict().
+		Str("report name", report.GetName()).
+		Str("report resourceVersion", report.GetResourceVersion()).
+		Str("summary", summary)).
+		Msg("updated ClusterPolicyReport")
 	return nil
 }
 
@@ -162,9 +146,6 @@ func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyR
 }
 
 func (s *MemoryPolicyReportStore) listPolicyReports() ([]PolicyReport, error) { //nolint:unparam // respect the interface
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
 	return maps.Values(s.prCache), nil
 }
 
