@@ -12,7 +12,6 @@ import (
 	"github.com/kubewarden/audit-scanner/internal/constants"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	"k8s.io/client-go/util/retry"
 )
 
 type MemoryPolicyReportStore struct {
@@ -125,21 +124,17 @@ func (s *MemoryPolicyReportStore) SavePolicyReport(report *PolicyReport) error {
 		}
 		return getErr
 	}
-	// Update existing Policy Report
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// get the latest report version to be updated
-		latestReport, err := s.GetPolicyReport(report.GetNamespace())
-		if err != nil {
-			return err
-		}
-		latestReport.Summary = report.Summary
-		latestReport.Results = report.Results
-		return s.UpdatePolicyReport(&latestReport)
-	})
-	if retryErr != nil {
-		return fmt.Errorf("update failed: %w", retryErr)
+
+	// get the latest report version to be updated
+	latestReport, err := s.GetPolicyReport(report.GetNamespace())
+	if err != nil {
+		return fmt.Errorf("update failed: %w", err)
 	}
-	return nil
+
+	// Update existing Policy Report
+	latestReport.Summary = report.Summary
+	latestReport.Results = report.Results
+	return s.UpdatePolicyReport(&latestReport)
 }
 
 func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyReport) error {
@@ -153,21 +148,17 @@ func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyR
 		}
 		return getErr
 	}
-	// Update existing Policy Report
-	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		// get the latest report version to be updated
-		latestReport, err := s.GetClusterPolicyReport(report.GetName())
-		if err != nil {
-			return err
-		}
-		latestReport.Summary = report.Summary
-		latestReport.Results = report.Results
-		return s.UpdateClusterPolicyReport(&latestReport)
-	})
-	if retryErr != nil {
-		return fmt.Errorf("update failed: %w", retryErr)
+
+	// get the latest report version to be updated
+	latestReport, err := s.GetClusterPolicyReport(report.GetName())
+	if err != nil {
+		return fmt.Errorf("update failed: %w", err)
 	}
-	return nil
+
+	// Update existing Policy Report
+	latestReport.Summary = report.Summary
+	latestReport.Results = report.Results
+	return s.UpdateClusterPolicyReport(&latestReport)
 }
 
 func (s *MemoryPolicyReportStore) listPolicyReports() ([]PolicyReport, error) { //nolint:unparam // respect the interface

@@ -15,7 +15,7 @@ has its own dedicated `PolicyReport`. Cluster-wide resources compliance is avail
 the `ClusterPolicyReport` resource. 
 
 Instead of relying on `PolicyReport` objects, one can also configure Audit scanner to
-save all this information in-memory only, by specifying `--store MEMORY`.
+save all this information in-memory only, by specifying `--store memory`.
 
 # Deployment
 

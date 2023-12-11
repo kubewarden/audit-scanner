@@ -1,8 +1,8 @@
 package report
 
 const (
-	KUBERNETES string = "KUBERNETES"
-	MEMORY     string = "MEMORY"
+	KUBERNETES string = "kubernetes"
+	MEMORY     string = "memory"
 )
 
 var SupportedTypes = [2]string{KUBERNETES, MEMORY}

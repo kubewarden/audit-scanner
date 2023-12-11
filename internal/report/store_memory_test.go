@@ -1,8 +1,9 @@
 package report_test
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/kubewarden/audit-scanner/internal/report"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,7 +38,6 @@ func TestAddMemoryPolicyReportStore(t *testing.T) {
 }
 
 func TestUpdateMemoryPolicyReportStore(t *testing.T) {
-	//nolint:dupl
 	t.Run("Update then Get namespaced PolicyReport", func(t *testing.T) {
 		store, err := report.NewMemoryPolicyReportStore()
 		require.NoError(t, err)
@@ -65,7 +65,6 @@ func TestUpdateMemoryPolicyReportStore(t *testing.T) {
 		}
 	})
 
-	//nolint:dupl
 	t.Run("Clusterwide Update then Get", func(t *testing.T) {
 		store, err := report.NewMemoryPolicyReportStore()
 		require.NoError(t, err)
@@ -128,7 +127,6 @@ func TestSaveMemoryReports(t *testing.T) {
 		// always updates ClusterPolicyReport, store initializes with blank
 		// ClusterPolicReport
 		require.NoError(t, err, "Should not return errors: %v", err)
-
 	})
 
 	t.Run("Save PolicyReport (create)", func(t *testing.T) {
