@@ -93,37 +93,6 @@ func (s *KubernetesPolicyReportStore) GetClusterPolicyReport(name string) (Clust
 	}, nil
 }
 
-func (s *KubernetesPolicyReportStore) UpdatePolicyReport(report *PolicyReport) error {
-	err := s.client.Update(context.Background(), &report.PolicyReport)
-	if err != nil {
-		return err
-	}
-	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("report resourceVersion", report.GetResourceVersion()).
-			Str("summary", summary),
-		).Msg("updated PolicyReport")
-	return nil
-}
-
-func (s *KubernetesPolicyReportStore) UpdateClusterPolicyReport(report *ClusterPolicyReport) error {
-	err := s.client.Update(context.Background(), &report.ClusterPolicyReport)
-	if err != nil {
-		return err
-	}
-	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("summary", summary),
-		).Msg("updated ClusterPolicyReport")
-	return nil
-}
-
 func (s *KubernetesPolicyReportStore) RemovePolicyReport(namespace string) error {
 	if report, err := s.GetPolicyReport(namespace); err == nil {
 		err := s.client.Delete(context.Background(), &report.PolicyReport)
@@ -157,6 +126,37 @@ func (s *KubernetesPolicyReportStore) createPolicyReport(report *PolicyReport) e
 			Str("report ns", report.GetNamespace()).
 			Str("summary", summary),
 		).Msg("created PolicyReport")
+	return nil
+}
+
+func (s *KubernetesPolicyReportStore) updatePolicyReport(report *PolicyReport) error {
+	err := s.client.Update(context.Background(), &report.PolicyReport)
+	if err != nil {
+		return err
+	}
+	summary, _ := report.GetSummaryJSON()
+	log.Info().
+		Dict("dict", zerolog.Dict().
+			Str("report name", report.GetName()).
+			Str("report ns", report.GetNamespace()).
+			Str("report resourceVersion", report.GetResourceVersion()).
+			Str("summary", summary),
+		).Msg("updated PolicyReport")
+	return nil
+}
+
+func (s *KubernetesPolicyReportStore) updateClusterPolicyReport(report *ClusterPolicyReport) error {
+	err := s.client.Update(context.Background(), &report.ClusterPolicyReport)
+	if err != nil {
+		return err
+	}
+	summary, _ := report.GetSummaryJSON()
+	log.Info().
+		Dict("dict", zerolog.Dict().
+			Str("report name", report.GetName()).
+			Str("report ns", report.GetNamespace()).
+			Str("summary", summary),
+		).Msg("updated ClusterPolicyReport")
 	return nil
 }
 
@@ -194,7 +194,7 @@ func (s *KubernetesPolicyReportStore) SavePolicyReport(report *PolicyReport) err
 		}
 		latestReport.Summary = report.Summary
 		latestReport.Results = report.Results
-		return s.UpdatePolicyReport(&latestReport)
+		return s.updatePolicyReport(&latestReport)
 	})
 	if retryErr != nil {
 		return fmt.Errorf("update failed: %w", retryErr)
@@ -221,7 +221,7 @@ func (s *KubernetesPolicyReportStore) SaveClusterPolicyReport(report *ClusterPol
 		}
 		latestReport.Summary = report.Summary
 		latestReport.Results = report.Results
-		return s.UpdateClusterPolicyReport(&latestReport)
+		return s.updateClusterPolicyReport(&latestReport)
 	})
 	if retryErr != nil {
 		return fmt.Errorf("update failed: %w", retryErr)

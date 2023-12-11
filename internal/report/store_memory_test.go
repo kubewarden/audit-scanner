@@ -37,58 +37,6 @@ func TestAddMemoryPolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestUpdateMemoryPolicyReportStore(t *testing.T) {
-	t.Run("Update then Get namespaced PolicyReport", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		require.NoError(t, err)
-
-		err = store.SavePolicyReport(&npr)
-		require.NoError(t, err, "Cannot save PolicyReport: %v", err)
-
-		resource, err := store.GetPolicyReport(npr.GetNamespace())
-		require.NoError(t, err, "Should be found in Store after adding PolicyReport report to the store: %v", err)
-		if resource.Summary.Skip != 0 {
-			t.Errorf("Expected Summary.Skip to be 0")
-		}
-
-		// copy first resource version
-		upr := resource
-		// do some change in the resource
-		upr.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
-
-		err = store.UpdatePolicyReport(&upr)
-		require.NoError(t, err, "Cannot update PolicyReport: %v", err)
-
-		r2, _ := store.GetPolicyReport(npr.GetNamespace())
-		if r2.Summary.Skip != 1 {
-			t.Errorf("PolicyReport Expected Summary.Skip to be 1 after update")
-		}
-	})
-
-	t.Run("Clusterwide Update then Get", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		require.NoError(t, err)
-
-		err = store.SaveClusterPolicyReport(&cpr)
-		require.NoError(t, err, "Cannot save ClusterPolicyReport: %v", err)
-
-		resource, err := store.GetClusterPolicyReport(cpr.GetName())
-		require.NoError(t, err, "Should be found in Store after adding ClusterPolicyReport report to the store: %v", err)
-		if resource.Summary.Skip != 0 {
-			t.Errorf("Expected Summary.Skip to be 0")
-		}
-
-		cprWithSkip := resource
-		cprWithSkip.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
-
-		err = store.UpdateClusterPolicyReport(&cprWithSkip)
-		require.NoError(t, err, "Cannot update ClusterPolicyReport: %v", err)
-
-		r2, _ := store.GetClusterPolicyReport(cprWithSkip.GetName())
-		require.Equal(t, 1, r2.Summary.Skip, "ClusterPolicyReport Expected Summary.Skip to be 1 after update")
-	})
-}
-
 func TestDeleteMemoryPolicyReportStore(t *testing.T) {
 	t.Run("Delete then Get namespaced PolicyReport", func(t *testing.T) {
 		store, err := report.NewMemoryPolicyReportStore()

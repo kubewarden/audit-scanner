@@ -64,39 +64,6 @@ func (s *MemoryPolicyReportStore) GetClusterPolicyReport(name string) (ClusterPo
 	return report, nil
 }
 
-func (s *MemoryPolicyReportStore) UpdatePolicyReport(report *PolicyReport) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.prCache[report.GetNamespace()] = *report
-
-	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("report resourceVersion", report.GetResourceVersion()).
-			Str("summary", summary),
-		).Msg("updated PolicyReport")
-	return nil
-}
-
-func (s *MemoryPolicyReportStore) UpdateClusterPolicyReport(report *ClusterPolicyReport) error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
-
-	s.cprCache[report.GetName()] = *report
-
-	summary, _ := report.GetSummaryJSON()
-	log.Info().
-		Dict("dict", zerolog.Dict().
-			Str("report name", report.GetName()).
-			Str("report ns", report.GetNamespace()).
-			Str("summary", summary),
-		).Msg("updated ClusterPolicyReport")
-	return nil
-}
-
 func (s *MemoryPolicyReportStore) RemovePolicyReport(namespace string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -113,6 +80,39 @@ func (s *MemoryPolicyReportStore) RemoveAllNamespacedPolicyReports() error {
 	return nil
 }
 
+func (s *MemoryPolicyReportStore) updatePolicyReport(report *PolicyReport) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.prCache[report.GetNamespace()] = *report
+
+	summary, _ := report.GetSummaryJSON()
+	log.Info().
+		Dict("dict", zerolog.Dict().
+			Str("report name", report.GetName()).
+			Str("report ns", report.GetNamespace()).
+			Str("report resourceVersion", report.GetResourceVersion()).
+			Str("summary", summary),
+		).Msg("updated PolicyReport")
+	return nil
+}
+
+func (s *MemoryPolicyReportStore) updateClusterPolicyReport(report *ClusterPolicyReport) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.cprCache[report.GetName()] = *report
+
+	summary, _ := report.GetSummaryJSON()
+	log.Info().
+		Dict("dict", zerolog.Dict().
+			Str("report name", report.GetName()).
+			Str("report ns", report.GetNamespace()).
+			Str("summary", summary),
+		).Msg("updated ClusterPolicyReport")
+	return nil
+}
+
 func (s *MemoryPolicyReportStore) SavePolicyReport(report *PolicyReport) error {
 	// Check for existing Policy Report
 	_, getErr := s.GetPolicyReport(report.GetNamespace())
@@ -120,7 +120,7 @@ func (s *MemoryPolicyReportStore) SavePolicyReport(report *PolicyReport) error {
 		// Create new Policy Report if not found
 		if errors.Is(getErr, constants.ErrResourceNotFound) {
 			// Update will create a new one if it doesn't exist
-			return s.UpdatePolicyReport(report)
+			return s.updatePolicyReport(report)
 		}
 		return getErr
 	}
@@ -134,7 +134,7 @@ func (s *MemoryPolicyReportStore) SavePolicyReport(report *PolicyReport) error {
 	// Update existing Policy Report
 	latestReport.Summary = report.Summary
 	latestReport.Results = report.Results
-	return s.UpdatePolicyReport(&latestReport)
+	return s.updatePolicyReport(&latestReport)
 }
 
 func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyReport) error {
@@ -144,7 +144,7 @@ func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyR
 		// Create new Policy Report if not found
 		if errors.Is(getErr, constants.ErrResourceNotFound) {
 			// Update will create a new one if it doesn't exist
-			return s.UpdateClusterPolicyReport(report)
+			return s.updateClusterPolicyReport(report)
 		}
 		return getErr
 	}
@@ -158,7 +158,7 @@ func (s *MemoryPolicyReportStore) SaveClusterPolicyReport(report *ClusterPolicyR
 	// Update existing Policy Report
 	latestReport.Summary = report.Summary
 	latestReport.Results = report.Results
-	return s.UpdateClusterPolicyReport(&latestReport)
+	return s.updateClusterPolicyReport(&latestReport)
 }
 
 func (s *MemoryPolicyReportStore) listPolicyReports() ([]PolicyReport, error) { //nolint:unparam // respect the interface

@@ -19,13 +19,6 @@ type PolicyReportStore interface {
 	// GetClusterPolicyReport gets the ClusterPolicyReport
 	GetClusterPolicyReport(name string) (ClusterPolicyReport, error)
 
-	// UpdatePolicyReport updates namespaced PolicyReport
-	UpdatePolicyReport(report *PolicyReport) error
-
-	// UpdateClusterPolicyReport updates a ClusterPolicyReport or PolicyReport.
-	// ns argument is used in case of namespaced PolicyReport
-	UpdateClusterPolicyReport(report *ClusterPolicyReport) error
-
 	// RemovePolicyReport removes a PolicyReport from a given namespace
 	RemovePolicyReport(namespace string) error
 
