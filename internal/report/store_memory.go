@@ -13,6 +13,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// MemoryPolicyReportStore is an implementation of `PolicyReportStore`
+// that uses in-memory cache to store `PolicyReports` and `ClusterPolicyReports`
 type MemoryPolicyReportStore struct {
 	// prCache is a map between a namespace and a PolicyReport
 	prCache map[string]PolicyReport

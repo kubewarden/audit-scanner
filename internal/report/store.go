@@ -7,10 +7,9 @@ const (
 
 var SupportedTypes = [2]string{KUBERNETES, MEMORY}
 
-// PolicyReportStore caches the latest version of PolicyReports
-// There is 2 different stores available:
-//   - KubernetesPolicyReportStore, which uses K8s/etcd backend only
-//   - MemoryPolicyReportStore, which uses in-memory cache
+// PolicyReportStore caches the latest version of `PolicyReports` and `ClusterPolicyReports`.
+// It also provides functions to read, delete and save these resources,
+// only updating them if there is indeed a change in data.
 type PolicyReportStore interface {
 	// GetPolicyReport returns the Policy Report defined inside a given namespace.
 	// An empty PolicyReport is returned when nothing is found

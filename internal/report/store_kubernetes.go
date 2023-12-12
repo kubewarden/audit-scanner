@@ -22,6 +22,8 @@ import (
 	polReport "sigs.k8s.io/wg-policy-prototypes/policy-report/pkg/api/wgpolicyk8s.io/v1alpha2"
 )
 
+// KubernetesPolicyReportStore is an implementation of `PolicyReportStore`
+// that uses Kubernetes (etcd) to store `PolicyReports` and `ClusterPolicyReports`
 type KubernetesPolicyReportStore struct {
 	// client used to instantiate PolicyReport resources
 	client client.Client
