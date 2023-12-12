@@ -72,10 +72,6 @@ There will be a ClusterPolicyReport with results for cluster-wide resources.`,
 			return err
 		}
 
-		policyReportStore, err := getPolicyReportStore(storeType)
-		if err != nil {
-			return err
-		}
 		policiesFetcher, err := policies.NewFetcher(kubewardenNamespace, skippedNs)
 		if err != nil {
 			return err
@@ -84,7 +80,7 @@ There will be a ClusterPolicyReport with results for cluster-wide resources.`,
 		if err != nil {
 			return err
 		}
-		scanner, err := scanner.NewScanner(policyReportStore, policiesFetcher, resourcesFetcher, insecureSSL, caCertFile)
+		scanner, err := scanner.NewScanner(storeType, policiesFetcher, resourcesFetcher, insecureSSL, caCertFile)
 		if err != nil {
 			return err
 		}
@@ -94,7 +90,7 @@ There will be a ClusterPolicyReport with results for cluster-wide resources.`,
 		}
 
 		if outputScan {
-			str, err := policyReportStore.ToJSON()
+			str, err := scanner.ReportStore.ToJSON()
 			if err != nil {
 				log.Error().Err(err).Msg("error marshaling reportStore to JSON")
 			}
@@ -103,17 +99,6 @@ There will be a ClusterPolicyReport with results for cluster-wide resources.`,
 
 		return nil
 	},
-}
-
-func getPolicyReportStore(storeType string) (report.PolicyReportStore, error) { //nolint:ireturn // returning a generic type is ok here
-	switch storeType {
-	case report.KUBERNETES:
-		return report.NewKubernetesPolicyReportStore()
-	case report.MEMORY:
-		return report.NewMemoryPolicyReportStore()
-	default:
-		return nil, fmt.Errorf("invalid policyReport store type: %s", storeType)
-	}
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
