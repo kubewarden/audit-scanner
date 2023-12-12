@@ -376,9 +376,7 @@ var nsKubewarden = v1.Namespace{
 	},
 }
 
-func mockClient( //nolint:ireturn // no specific client type
-	initObjs ...k8sClient.Object,
-) k8sClient.Client {
+func mockClient(initObjs ...k8sClient.Object) k8sClient.Client { //nolint:ireturn // no specific client type
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(schema.GroupVersion{Group: constants.KubewardenPoliciesGroup, Version: constants.KubewardenPoliciesVersion}, &policiesv1.ClusterAdmissionPolicy{}, &policiesv1.AdmissionPolicy{}, &policiesv1.ClusterAdmissionPolicyList{}, &policiesv1.AdmissionPolicyList{})
 	metav1.AddToGroupVersion(customScheme, schema.GroupVersion{Group: constants.KubewardenPoliciesGroup, Version: constants.KubewardenPoliciesVersion})

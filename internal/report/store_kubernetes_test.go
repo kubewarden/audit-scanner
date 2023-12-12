@@ -15,7 +15,7 @@ import (
 var labels = map[string]string{"app.kubernetes.io/managed-by": "kubewarden"}
 
 var cpr = report.ClusterPolicyReport{
-	v1alpha2.ClusterPolicyReport{
+	ClusterPolicyReport: v1alpha2.ClusterPolicyReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "polr-clusterwide",
 			CreationTimestamp: metav1.Now(),
@@ -27,7 +27,7 @@ var cpr = report.ClusterPolicyReport{
 }
 
 var npr = report.PolicyReport{
-	v1alpha2.PolicyReport{
+	PolicyReport: v1alpha2.PolicyReport{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "polr-ns-test",
 			Namespace:         "test",
@@ -135,8 +135,8 @@ func TestSaveKubernetesReports(t *testing.T) {
 		store := report.MockNewKubernetesPolicyReportStore(client)
 		report := report.NewClusterPolicyReport("testing")
 		if err := store.SaveClusterPolicyReport(&report); err != nil {
-			// always updates ClusterPolicyReport, store initializes with blank
-			// ClusterPolicReport
+			// always updates ClusterPolicyReport,
+			// store initializes with blank ClusterPolicyReport
 			t.Errorf("Should not return errors: %v", err)
 		}
 	})
@@ -145,7 +145,7 @@ func TestSaveKubernetesReports(t *testing.T) {
 		client := fake.NewClientBuilder().WithScheme(customScheme).WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
 		store := report.MockNewKubernetesPolicyReportStore(client)
 		npr2 := report.PolicyReport{
-			v1alpha2.PolicyReport{
+			PolicyReport: v1alpha2.PolicyReport{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "polr-ns-test2",
 					Namespace:         "test2",

@@ -8,16 +8,15 @@ require (
 	github.com/kubewarden/kubewarden-controller v1.9.0
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
-	github.com/stretchr/testify v1.8.2
-	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e
+	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
 	k8s.io/api v0.28.4
 	k8s.io/apimachinery v0.28.4
 	k8s.io/client-go v0.28.4
 	sigs.k8s.io/controller-runtime v0.16.3
-	sigs.k8s.io/wg-policy-prototypes v0.0.0-20230505033312-51c21979086a
+	sigs.k8s.io/wg-policy-prototypes v0.0.0-20230828153944-22764d64b0c3
 )
 
-replace sigs.k8s.io/wg-policy-prototypes => sigs.k8s.io/wg-policy-prototypes v0.0.0-20230505033312-51c21979086a
+replace sigs.k8s.io/wg-policy-prototypes => sigs.k8s.io/wg-policy-prototypes v0.0.0-20230828153944-22764d64b0c3
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -48,7 +47,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.16.0 // indirect
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
