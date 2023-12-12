@@ -48,9 +48,10 @@ type ResourcesFetcher interface {
 type Scanner struct {
 	policiesFetcher  PoliciesFetcher
 	resourcesFetcher ResourcesFetcher
-	ReportStore      report.PolicyReportStore
+	reportStore      report.PolicyReportStore
 	// http client used to make requests against the Policy Server
 	httpClient http.Client
+	outputScan bool
 }
 
 // NewScanner creates a new scanner with the PoliciesFetcher provided. If
@@ -61,6 +62,7 @@ func NewScanner(
 	storeType string,
 	policiesFetcher PoliciesFetcher,
 	resourcesFetcher ResourcesFetcher,
+	outputScan bool,
 	insecureClient bool,
 	caCertFile string,
 ) (*Scanner, error) {
@@ -106,7 +108,13 @@ func NewScanner(
 		log.Warn().Msg("connecting to PolicyServers endpoints without validating TLS connection")
 	}
 
-	return &Scanner{policiesFetcher, resourcesFetcher, store, httpClient}, nil
+	return &Scanner{
+		policiesFetcher:  policiesFetcher,
+		resourcesFetcher: resourcesFetcher,
+		reportStore:      store,
+		httpClient:       httpClient,
+		outputScan:       outputScan,
+	}, nil
 }
 
 func getPolicyReportStore(storeType string) (report.PolicyReportStore, error) { //nolint:ireturn // returning a generic type is ok here
@@ -151,7 +159,7 @@ func (s *Scanner) ScanNamespace(nsName string) error {
 	namespacedsReport := report.NewPolicyReport(namespace)
 	namespacedsReport.Summary.Skip = skippedNum
 	// old policy report to be used as cache
-	previousNamespacedReport, err := s.ReportStore.GetPolicyReport(nsName)
+	previousNamespacedReport, err := s.reportStore.GetPolicyReport(nsName)
 	if errors.Is(err, constants.ErrResourceNotFound) {
 		log.Info().Str("namespace", nsName).
 			Msg("no pre-existing PolicyReport, will create one at end of the scan if needed")
@@ -165,11 +173,19 @@ func (s *Scanner) ScanNamespace(nsName string) error {
 	for i := range auditableResources {
 		auditResource(&auditableResources[i], s.resourcesFetcher, &s.httpClient, &namespacedsReport, &previousNamespacedReport)
 	}
-	err = s.ReportStore.SavePolicyReport(&namespacedsReport)
+	err = s.reportStore.SavePolicyReport(&namespacedsReport)
 	if err != nil {
 		log.Error().Err(err).Msg("error adding PolicyReport to store")
 	}
 	log.Info().Str("namespace", nsName).Msg("namespace scan finished")
+
+	if s.outputScan {
+		str, err := s.reportStore.ToJSON()
+		if err != nil {
+			log.Error().Err(err).Msg("error marshaling reportStore to JSON")
+		}
+		fmt.Println(str) //nolint:forbidigo
+	}
 
 	return nil
 }
@@ -219,7 +235,7 @@ func (s *Scanner) ScanClusterWideResources() error {
 	clusterReport := report.NewClusterPolicyReport(constants.DefaultClusterwideReportName)
 	clusterReport.Summary.Skip = skippedNum
 	// old policy report to be used as cache
-	previousClusterReport, err := s.ReportStore.GetClusterPolicyReport(constants.DefaultClusterwideReportName)
+	previousClusterReport, err := s.reportStore.GetClusterPolicyReport(constants.DefaultClusterwideReportName)
 	if err != nil {
 		log.Info().Err(err).Msg("no-prexisting ClusterPolicyReport, will create one at the end of the scan")
 	}
@@ -228,11 +244,19 @@ func (s *Scanner) ScanClusterWideResources() error {
 	for i := range auditableResources {
 		auditClusterResource(&auditableResources[i], s.resourcesFetcher, &s.httpClient, &clusterReport, &previousClusterReport)
 	}
-	err = s.ReportStore.SaveClusterPolicyReport(&clusterReport)
+	err = s.reportStore.SaveClusterPolicyReport(&clusterReport)
 	if err != nil {
 		log.Error().Err(err).Msg("error adding PolicyReport to store")
 	}
 	log.Info().Msg("clusterwide resources scan finished")
+
+	if s.outputScan {
+		str, err := s.reportStore.ToJSON()
+		if err != nil {
+			log.Error().Err(err).Msg("error marshaling reportStore to JSON")
+		}
+		fmt.Println(str) //nolint:forbidigo
+	}
 
 	return nil
 }

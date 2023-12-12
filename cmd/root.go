@@ -80,24 +80,12 @@ There will be a ClusterPolicyReport with results for cluster-wide resources.`,
 		if err != nil {
 			return err
 		}
-		scanner, err := scanner.NewScanner(storeType, policiesFetcher, resourcesFetcher, insecureSSL, caCertFile)
+		scanner, err := scanner.NewScanner(storeType, policiesFetcher, resourcesFetcher, outputScan, insecureSSL, caCertFile)
 		if err != nil {
 			return err
 		}
 
-		if err := startScanner(namespace, clusterWide, scanner); err != nil {
-			return err
-		}
-
-		if outputScan {
-			str, err := scanner.ReportStore.ToJSON()
-			if err != nil {
-				log.Error().Err(err).Msg("error marshaling reportStore to JSON")
-			}
-			fmt.Println(str) //nolint:forbidigo
-		}
-
-		return nil
+		return startScanner(namespace, clusterWide, scanner)
 	},
 }
 
