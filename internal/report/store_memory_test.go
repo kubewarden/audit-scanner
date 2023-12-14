@@ -49,46 +49,6 @@ func TestAddMemoryPolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestDeleteMemoryPolicyReportStore(t *testing.T) {
-	t.Run("Delete then Get namespaced PolicyReport", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
-
-		err = store.SavePolicyReport(&npr)
-		if err != nil {
-			t.Errorf("Cannot save PolicyReport: %v", err)
-		}
-
-		_, err = store.GetPolicyReport(npr.GetNamespace())
-		if err != nil {
-			t.Errorf("Should be found in Store after adding report to the store")
-		}
-
-		_ = store.RemovePolicyReport(npr.GetNamespace())
-		_, err = store.GetPolicyReport(npr.GetNamespace())
-		if err == nil {
-			t.Errorf("Should not be found after Remove report from Store")
-		}
-	})
-
-	t.Run("Remove all namespaced", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
-
-		_ = store.SavePolicyReport(&npr)
-
-		_ = store.RemoveAllNamespacedPolicyReports()
-		_, err = store.GetPolicyReport(npr.GetNamespace())
-		if err == nil {
-			t.Errorf("Should have no results after CleanUp")
-		}
-	})
-}
-
 func TestSaveMemoryReports(t *testing.T) {
 	t.Run("Save ClusterPolicyReport (create)", func(t *testing.T) {
 		store, err := report.NewMemoryPolicyReportStore()

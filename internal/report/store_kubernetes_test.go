@@ -80,46 +80,6 @@ func TestAddKubernetesPolicyReportStore(t *testing.T) {
 	})
 }
 
-func TestDeleteKubernetesPolicyReportStore(t *testing.T) {
-	customScheme := scheme.Scheme
-	customScheme.AddKnownTypes(
-		v1alpha2.SchemeGroupVersion,
-		&v1alpha2.PolicyReport{},
-		&v1alpha2.ClusterPolicyReport{},
-		&v1alpha2.PolicyReportList{},
-		&v1alpha2.ClusterPolicyReportList{},
-	)
-
-	t.Run("Delete then Get namespaced PolicyReport", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(customScheme).
-			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewKubernetesPolicyReportStore(client)
-		_, err := store.GetPolicyReport(npr.GetNamespace())
-		if err != nil {
-			t.Errorf("Should be found in Store after adding report to the store")
-		}
-
-		_ = store.RemovePolicyReport(npr.GetNamespace())
-		_, err = store.GetPolicyReport(npr.GetNamespace())
-		if err == nil {
-			t.Fatalf("Should not be found after Remove report from Store")
-		}
-	})
-
-	t.Run("Remove all namespaced", func(t *testing.T) {
-		client := fake.NewClientBuilder().WithScheme(customScheme).
-			WithObjects(&npr.PolicyReport, &cpr.ClusterPolicyReport).Build()
-		store := report.MockNewKubernetesPolicyReportStore(client)
-		_ = store.SavePolicyReport(&npr)
-
-		_ = store.RemoveAllNamespacedPolicyReports()
-		_, err := store.GetPolicyReport(npr.GetNamespace())
-		if err == nil {
-			t.Fatalf("Should have no results after CleanUp")
-		}
-	})
-}
-
 func TestSaveKubernetesReports(t *testing.T) {
 	customScheme := scheme.Scheme
 	customScheme.AddKnownTypes(

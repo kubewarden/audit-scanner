@@ -18,12 +18,6 @@ type PolicyReportStore interface {
 	// GetClusterPolicyReport gets the ClusterPolicyReport
 	GetClusterPolicyReport(name string) (ClusterPolicyReport, error)
 
-	// RemovePolicyReport removes a PolicyReport from a given namespace
-	RemovePolicyReport(namespace string) error
-
-	// RemoveAllNamespacedPolicyReports deletes all namespaced PolicyReports
-	RemoveAllNamespacedPolicyReports() error
-
 	// SavePolicyReport instantiates the passed namespaced PolicyReport if it doesn't exist, or
 	// updates it if one is found
 	SavePolicyReport(report *PolicyReport) error

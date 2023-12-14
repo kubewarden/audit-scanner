@@ -99,27 +99,6 @@ func (s *KubernetesPolicyReportStore) GetClusterPolicyReport(name string) (Clust
 	}, nil
 }
 
-func (s *KubernetesPolicyReportStore) RemovePolicyReport(namespace string) error {
-	if report, err := s.GetPolicyReport(namespace); err == nil {
-		err := s.client.Delete(context.Background(), &report.PolicyReport)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (s *KubernetesPolicyReportStore) RemoveAllNamespacedPolicyReports() error {
-	err := s.client.DeleteAllOf(context.Background(), &polReport.PolicyReport{},
-		client.MatchingLabels(map[string]string{
-			LabelAppManagedBy: LabelApp,
-		}))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (s *KubernetesPolicyReportStore) createPolicyReport(report *PolicyReport) error {
 	err := s.client.Create(context.Background(), &report.PolicyReport)
 	if err != nil {

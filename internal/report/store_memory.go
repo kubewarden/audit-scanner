@@ -62,18 +62,6 @@ func (s *MemoryPolicyReportStore) GetClusterPolicyReport(name string) (ClusterPo
 	return report, nil
 }
 
-func (s *MemoryPolicyReportStore) RemovePolicyReport(namespace string) error {
-	delete(s.prCache, namespace)
-
-	return nil
-}
-
-func (s *MemoryPolicyReportStore) RemoveAllNamespacedPolicyReports() error {
-	s.prCache = make(map[string]PolicyReport)
-
-	return nil
-}
-
 func (s *MemoryPolicyReportStore) updatePolicyReport(report *PolicyReport) error {
 	s.prCache[report.GetNamespace()] = *report
 
