@@ -122,7 +122,7 @@ func getPolicyReportStore(storeType string) (report.PolicyReportStore, error) { 
 	case report.KUBERNETES:
 		return report.NewKubernetesPolicyReportStore()
 	case report.MEMORY:
-		return report.NewMemoryPolicyReportStore()
+		return report.NewMemoryPolicyReportStore(), nil
 	default:
 		return nil, fmt.Errorf("invalid policyReport store type: %s", storeType)
 	}

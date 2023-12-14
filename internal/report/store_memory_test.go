@@ -10,12 +10,9 @@ import (
 
 func TestAddMemoryPolicyReportStore(t *testing.T) {
 	t.Run("Add then Get namespaced PolicyReport", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
+		store := report.NewMemoryPolicyReportStore()
 
-		_, err = store.GetPolicyReport(npr.GetNamespace())
+		_, err := store.GetPolicyReport(npr.GetNamespace())
 		if err == nil {
 			t.Errorf("Should not find PolicyReport in empty Store")
 		}
@@ -32,12 +29,9 @@ func TestAddMemoryPolicyReportStore(t *testing.T) {
 	})
 
 	t.Run("Clusterwide Add then Get", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
+		store := report.NewMemoryPolicyReportStore()
 
-		err = store.SaveClusterPolicyReport(&cpr)
+		err := store.SaveClusterPolicyReport(&cpr)
 		if err != nil {
 			t.Errorf("Cannot save report: %v", err)
 		}
@@ -51,13 +45,10 @@ func TestAddMemoryPolicyReportStore(t *testing.T) {
 
 func TestSaveMemoryReports(t *testing.T) {
 	t.Run("Save ClusterPolicyReport (create)", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
+		store := report.NewMemoryPolicyReportStore()
 
 		report := report.NewClusterPolicyReport("testing")
-		err = store.SaveClusterPolicyReport(&report)
+		err := store.SaveClusterPolicyReport(&report)
 		// always updates ClusterPolicyReport,
 		// store initializes with blank ClusterPolicyReport
 		if err != nil {
@@ -66,10 +57,7 @@ func TestSaveMemoryReports(t *testing.T) {
 	})
 
 	t.Run("Save PolicyReport (create)", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
+		store := report.NewMemoryPolicyReportStore()
 
 		npr2 := report.PolicyReport{
 			PolicyReport: v1alpha2.PolicyReport{
@@ -83,7 +71,7 @@ func TestSaveMemoryReports(t *testing.T) {
 			},
 		}
 
-		err = store.SavePolicyReport(&npr2)
+		err := store.SavePolicyReport(&npr2)
 		if err != nil {
 			t.Errorf("Should not return errors: %v", err)
 		}
@@ -95,17 +83,14 @@ func TestSaveMemoryReports(t *testing.T) {
 	})
 
 	t.Run("Save PolicyReport (update)", func(t *testing.T) {
-		store, err := report.NewMemoryPolicyReportStore()
-		if err != nil {
-			t.Errorf("Should not have errors when init store")
-		}
+		store := report.NewMemoryPolicyReportStore()
 
 		// copy first resource version
 		upr := npr
 		// do some change
 		upr.Summary = v1alpha2.PolicyReportSummary{Skip: 1}
 
-		err = store.SavePolicyReport(&upr)
+		err := store.SavePolicyReport(&upr)
 		if err != nil {
 			t.Errorf("Should not return errors: %v", err)
 		}

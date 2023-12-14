@@ -23,11 +23,11 @@ type MemoryPolicyReportStore struct {
 	cprCache map[string]ClusterPolicyReport
 }
 
-func NewMemoryPolicyReportStore() (*MemoryPolicyReportStore, error) {
+func NewMemoryPolicyReportStore() *MemoryPolicyReportStore {
 	return &MemoryPolicyReportStore{
 		prCache:  make(map[string]PolicyReport),
 		cprCache: make(map[string]ClusterPolicyReport),
-	}, nil
+	}
 }
 
 func (s *MemoryPolicyReportStore) GetPolicyReport(namespace string) (PolicyReport, error) {
