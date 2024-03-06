@@ -3,7 +3,7 @@ package report
 const (
 	policyReportSource            = "kubewarden"
 	propertyPolicyResourceVersion = "policy-resource-version"
-	PropertyPolicyUID             = "policy-uid"
+	propertyPolicyUID             = "policy-uid"
 )
 
 const (
