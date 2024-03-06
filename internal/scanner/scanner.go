@@ -21,6 +21,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	admissionv1 "k8s.io/api/admission/v1"
+	apimachineryerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -209,8 +210,13 @@ func (s *Scanner) ScanClusterWideResources(ctx context.Context) error {
 	return nil
 }
 
+//nolint:funlen
 func (s *Scanner) auditResource(ctx context.Context, policies []*policies.Policy, resource unstructured.Unstructured) {
 	policyReport := report.NewPolicyReport(resource)
+	oldPolicyReport, err := s.policyReportStore.GetPolicyReport(ctx, string(resource.GetUID()), resource.GetNamespace())
+	if err != nil && !apimachineryerrors.IsNotFound(err) {
+		log.Error().Err(err).Msg("error obtaining PolicyReport")
+	}
 
 	for _, p := range policies {
 		url := p.PolicyServer
@@ -223,6 +229,24 @@ func (s *Scanner) auditResource(ctx context.Context, policies []*policies.Policy
 
 		if !matches {
 			continue
+		}
+
+		// If the resource has been audited before, and the policy has not changed, we can skip the audit and use the previous result
+		if oldPolicyReport != nil {
+			oldResult := report.FindPolicyReportResultByResourceAndPolicy(oldPolicyReport, policy, resource)
+
+			if oldResult != nil {
+				log.Debug().Dict("response", zerolog.Dict().
+					Str("policy", policy.GetUniqueName()).
+					Str("resource", resource.GetName()).
+					Str("resource UID", string(resource.GetUID())).
+					Str("result", string(oldResult.Result)),
+				).
+					Msg("audit review response from previous audit")
+
+				report.AddResultToPolicyReport(policyReport, oldResult)
+				continue
+			}
 		}
 
 		admissionReviewRequest := newAdmissionReview(resource)
@@ -246,8 +270,8 @@ func (s *Scanner) auditResource(ctx context.Context, policies []*policies.Policy
 			).
 				Msg("audit review response")
 		}
-
-		report.AddResultToPolicyReport(policyReport, policy, admissionReviewResponse, errored)
+		result := report.NewPolicyReportResult(policy, admissionReviewResponse, errored, metav1.Timestamp{Seconds: time.Now().Unix()})
+		report.AddResultToPolicyReport(policyReport, result)
 	}
 
 	if s.outputScan {
@@ -262,15 +286,21 @@ func (s *Scanner) auditResource(ctx context.Context, policies []*policies.Policy
 	}
 
 	if !s.disableStore {
-		err := s.policyReportStore.CreateOrPatchPolicyReport(ctx, policyReport)
+		err := s.policyReportStore.CreateOrUpdatePolicyReport(ctx, oldPolicyReport, policyReport)
 		if err != nil {
-			log.Error().Err(err).Msg("error adding PolicyReport to store.")
+			log.Error().Err(err).Msg("error adding PolicyReport to the store")
 		}
 	}
 }
 
+//nolint:funlen
 func (s *Scanner) auditClusterResource(ctx context.Context, policies []*policies.Policy, resource unstructured.Unstructured) {
 	clusterPolicyReport := report.NewClusterPolicyReport(resource)
+	oldClusterPolicyReport, err := s.policyReportStore.GetClusterPolicyReport(ctx, string(resource.GetUID()))
+	if err != nil && !apimachineryerrors.IsNotFound(err) {
+		log.Error().Err(err).Msg("error obtaining PolicyReport")
+	}
+
 	for _, p := range policies {
 		url := p.PolicyServer
 		policy := p.Policy
@@ -282,6 +312,24 @@ func (s *Scanner) auditClusterResource(ctx context.Context, policies []*policies
 
 		if !matches {
 			continue
+		}
+
+		// If the resource has been audited before, and the policy has not changed, we can skip the audit and use the previous result
+		if oldClusterPolicyReport != nil {
+			oldResult := report.FindClusterPolicyReportResultByResourceAndPolicy(oldClusterPolicyReport, policy, resource)
+
+			if oldResult != nil {
+				log.Debug().Dict("response", zerolog.Dict().
+					Str("policy", policy.GetUniqueName()).
+					Str("resource", resource.GetName()).
+					Str("resource UID", string(resource.GetUID())).
+					Str("result", string(oldResult.Result)),
+				).
+					Msg("audit review response from previous audit")
+
+				report.AddResultToClusterPolicyReport(clusterPolicyReport, oldResult)
+				continue
+			}
 		}
 
 		admissionReviewRequest := newAdmissionReview(resource)
@@ -305,8 +353,8 @@ func (s *Scanner) auditClusterResource(ctx context.Context, policies []*policies
 			).
 				Msg("audit review response")
 		}
-
-		report.AddResultToClusterPolicyReport(clusterPolicyReport, policy, admissionReviewResponse, errored)
+		result := report.NewPolicyReportResult(policy, admissionReviewResponse, errored, metav1.Timestamp{Seconds: time.Now().Unix()})
+		report.AddResultToClusterPolicyReport(clusterPolicyReport, result)
 	}
 
 	if s.outputScan {
@@ -321,7 +369,7 @@ func (s *Scanner) auditClusterResource(ctx context.Context, policies []*policies
 	}
 
 	if !s.disableStore {
-		err := s.policyReportStore.CreateOrPatchClusterPolicyReport(ctx, clusterPolicyReport)
+		err := s.policyReportStore.CreateOrUpdateClusterPolicyReport(ctx, oldClusterPolicyReport, clusterPolicyReport)
 		if err != nil {
 			log.Error().Err(err).Msg("error adding ClusterPolicyReport to store")
 		}
