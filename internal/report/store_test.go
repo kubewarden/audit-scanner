@@ -3,6 +3,7 @@ package report
 import (
 	"context"
 	"testing"
+	"time"
 
 	testutils "github.com/kubewarden/audit-scanner/internal/testutils"
 	policiesv1 "github.com/kubewarden/kubewarden-controller/pkg/apis/policies/v1"
@@ -10,8 +11,6 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
-	wgpolicy "sigs.k8s.io/wg-policy-prototypes/policy-report/pkg/api/wgpolicyk8s.io/v1alpha2"
 )
 
 func TestCreatePolicyReport(t *testing.T) {
@@ -27,11 +26,10 @@ func TestCreatePolicyReport(t *testing.T) {
 	resource.SetResourceVersion("12345")
 
 	policyReport := NewPolicyReport(resource)
-	err := store.CreateOrPatchPolicyReport(context.TODO(), policyReport)
+	err := store.CreateOrUpdatePolicyReport(context.TODO(), nil, policyReport)
 	require.NoError(t, err)
 
-	storedPolicyReport := &wgpolicy.PolicyReport{}
-	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: policyReport.GetName(), Namespace: policyReport.GetNamespace()}, storedPolicyReport)
+	storedPolicyReport, err := store.GetPolicyReport(context.TODO(), policyReport.GetName(), policyReport.GetNamespace())
 	require.NoError(t, err)
 
 	require.Equal(t, policyReport.ObjectMeta.Labels, storedPolicyReport.ObjectMeta.Labels)
@@ -41,7 +39,7 @@ func TestCreatePolicyReport(t *testing.T) {
 	require.Equal(t, policyReport.Results, storedPolicyReport.Results)
 }
 
-func TestPatchPolicyReport(t *testing.T) {
+func TestUpdatePolicyReport(t *testing.T) {
 	fakeClient := testutils.NewFakeClient()
 	store := NewPolicyReportStore(fakeClient)
 
@@ -54,7 +52,7 @@ func TestPatchPolicyReport(t *testing.T) {
 	resource.SetResourceVersion("12345")
 
 	policyReport := NewPolicyReport(resource)
-	err := store.CreateOrPatchPolicyReport(context.TODO(), policyReport)
+	err := store.CreateOrUpdatePolicyReport(context.TODO(), nil, policyReport)
 	require.NoError(t, err)
 
 	// The resource version is updated to simulate a change in the resource.
@@ -75,12 +73,12 @@ func TestPatchPolicyReport(t *testing.T) {
 			Result:  &metav1.Status{Message: "The request was allowed"},
 		},
 	}
-	AddResultToPolicyReport(newPolicyReport, policy, admissionReview, false)
-	err = store.CreateOrPatchPolicyReport(context.TODO(), newPolicyReport)
+	result := NewPolicyReportResult(policy, admissionReview, false, metav1.Timestamp{Seconds: time.Now().Unix()})
+	AddResultToPolicyReport(newPolicyReport, result)
+	err = store.CreateOrUpdatePolicyReport(context.TODO(), policyReport, newPolicyReport)
 	require.NoError(t, err)
 
-	storedPolicyReport := &wgpolicy.PolicyReport{}
-	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: policyReport.GetName(), Namespace: policyReport.GetNamespace()}, storedPolicyReport)
+	storedPolicyReport, err := store.GetPolicyReport(context.TODO(), policyReport.GetName(), policyReport.GetNamespace())
 	require.NoError(t, err)
 
 	require.Equal(t, newPolicyReport.ObjectMeta.Labels, storedPolicyReport.ObjectMeta.Labels)
@@ -102,11 +100,10 @@ func TestCreateClusterPolicyReport(t *testing.T) {
 	resource.SetResourceVersion("12345")
 
 	clusterPolicyReport := NewClusterPolicyReport(resource)
-	err := store.CreateOrPatchClusterPolicyReport(context.TODO(), clusterPolicyReport)
+	err := store.CreateOrUpdateClusterPolicyReport(context.TODO(), nil, clusterPolicyReport)
 	require.NoError(t, err)
 
-	storedClusterPolicyReport := &wgpolicy.ClusterPolicyReport{}
-	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: clusterPolicyReport.GetName()}, storedClusterPolicyReport)
+	storedClusterPolicyReport, err := store.GetClusterPolicyReport(context.TODO(), clusterPolicyReport.GetName())
 	require.NoError(t, err)
 
 	require.Equal(t, clusterPolicyReport.ObjectMeta.Labels, storedClusterPolicyReport.ObjectMeta.Labels)
@@ -116,7 +113,7 @@ func TestCreateClusterPolicyReport(t *testing.T) {
 	require.Equal(t, clusterPolicyReport.Results, storedClusterPolicyReport.Results)
 }
 
-func TestPatchClusterPolicyReport(t *testing.T) {
+func TestUpdateClusterPolicyReport(t *testing.T) {
 	fakeClient := testutils.NewFakeClient()
 	store := NewPolicyReportStore(fakeClient)
 
@@ -128,7 +125,7 @@ func TestPatchClusterPolicyReport(t *testing.T) {
 	resource.SetResourceVersion("12345")
 
 	clusterPolicyReport := NewClusterPolicyReport(resource)
-	err := store.CreateOrPatchClusterPolicyReport(context.TODO(), clusterPolicyReport)
+	err := store.CreateOrUpdateClusterPolicyReport(context.TODO(), nil, clusterPolicyReport)
 	require.NoError(t, err)
 
 	// The resource version is updated to simulate a change in the resource.
@@ -148,12 +145,12 @@ func TestPatchClusterPolicyReport(t *testing.T) {
 			Result:  &metav1.Status{Message: "The request was allowed"},
 		},
 	}
-	AddResultToClusterPolicyReport(newClusterPolicyReport, policy, admissionReview, false)
-	err = store.CreateOrPatchClusterPolicyReport(context.TODO(), newClusterPolicyReport)
+	result := NewPolicyReportResult(policy, admissionReview, false, metav1.Timestamp{Seconds: time.Now().Unix()})
+	AddResultToClusterPolicyReport(newClusterPolicyReport, result)
+	err = store.CreateOrUpdateClusterPolicyReport(context.TODO(), clusterPolicyReport, newClusterPolicyReport)
 	require.NoError(t, err)
 
-	storedClusterPolicyReport := &wgpolicy.ClusterPolicyReport{}
-	err = fakeClient.Get(context.TODO(), types.NamespacedName{Name: clusterPolicyReport.GetName()}, storedClusterPolicyReport)
+	storedClusterPolicyReport, err := store.GetClusterPolicyReport(context.TODO(), clusterPolicyReport.GetName())
 	require.NoError(t, err)
 
 	require.Equal(t, newClusterPolicyReport.ObjectMeta.Labels, storedClusterPolicyReport.ObjectMeta.Labels)

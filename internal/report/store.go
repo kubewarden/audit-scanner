@@ -3,11 +3,8 @@ package report
 import (
 	"context"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	wgpolicy "sigs.k8s.io/wg-policy-prototypes/policy-report/pkg/api/wgpolicyk8s.io/v1alpha2"
 )
 
@@ -24,63 +21,59 @@ func NewPolicyReportStore(client client.Client) *PolicyReportStore {
 	}
 }
 
-// CreateOrPatchPolicyReport creates or patches a PolicyReport
-func (s *PolicyReportStore) CreateOrPatchPolicyReport(ctx context.Context, policyReport *wgpolicy.PolicyReport) error {
-	oldPolicyReport := &wgpolicy.PolicyReport{ObjectMeta: metav1.ObjectMeta{
-		Name:      policyReport.GetName(),
-		Namespace: policyReport.GetNamespace(),
-	}}
+// GetPolicyReport gets a PolicyReport by name and namespace
+func (s *PolicyReportStore) GetPolicyReport(ctx context.Context, name, namespace string) (*wgpolicy.PolicyReport, error) {
+	policyReport := &wgpolicy.PolicyReport{}
+	err := s.client.Get(ctx, types.NamespacedName{
+		Name:      name,
+		Namespace: namespace,
+	}, policyReport)
+	if err != nil {
+		return nil, err
+	}
 
-	operation, err := controllerutil.CreateOrPatch(ctx, s.client, oldPolicyReport, func() error {
+	return policyReport, nil
+}
+
+// CreateOrUpdatePolicyReport creates or updates a PolicyReport
+func (s *PolicyReportStore) CreateOrUpdatePolicyReport(ctx context.Context, oldPolicyReport, policyReport *wgpolicy.PolicyReport) error {
+	if oldPolicyReport != nil {
 		oldPolicyReport.ObjectMeta.Labels = policyReport.ObjectMeta.Labels
 		oldPolicyReport.ObjectMeta.OwnerReferences = policyReport.ObjectMeta.OwnerReferences
 		oldPolicyReport.Scope = policyReport.Scope
 		oldPolicyReport.Summary = policyReport.Summary
 		oldPolicyReport.Results = policyReport.Results
 
-		return nil
-	})
-	if err != nil {
-		return err
+		return s.client.Update(ctx, oldPolicyReport)
 	}
 
-	log.Debug().Dict("dict", zerolog.Dict()).
-		Str("report name", policyReport.GetName()).
-		Str("report version", policyReport.GetResourceVersion()).
-		Str("resource name", policyReport.Scope.Name).
-		Str("resource namespace", policyReport.Scope.Namespace).
-		Str("resource version", policyReport.Scope.ResourceVersion).
-		Msgf("PolicyReport %s", operation)
-
-	return nil
+	return s.client.Create(ctx, policyReport)
 }
 
-// CreateOrPatchClusterPolicyReport creates or patches a ClusterPolicyReport
-func (s *PolicyReportStore) CreateOrPatchClusterPolicyReport(ctx context.Context, clusterPolicyReport *wgpolicy.ClusterPolicyReport) error {
-	oldClusterPolicyReport := &wgpolicy.ClusterPolicyReport{ObjectMeta: metav1.ObjectMeta{
-		Name: clusterPolicyReport.GetName(),
-	}}
+// GetPolicyReport gets a PolicyReport by name and namespace
+func (s *PolicyReportStore) GetClusterPolicyReport(ctx context.Context, name string) (*wgpolicy.ClusterPolicyReport, error) {
+	clusterPolicyReport := &wgpolicy.ClusterPolicyReport{}
+	err := s.client.Get(ctx, types.NamespacedName{
+		Name: name,
+	}, clusterPolicyReport)
+	if err != nil {
+		return nil, err
+	}
 
-	operation, err := controllerutil.CreateOrPatch(ctx, s.client, oldClusterPolicyReport, func() error {
+	return clusterPolicyReport, nil
+}
+
+// CreateOrUpdateClusterPolicyReport creates or updates a ClusterPolicyReport
+func (s *PolicyReportStore) CreateOrUpdateClusterPolicyReport(ctx context.Context, oldClusterPolicyReport, clusterPolicyReport *wgpolicy.ClusterPolicyReport) error {
+	if oldClusterPolicyReport != nil {
 		oldClusterPolicyReport.ObjectMeta.Labels = clusterPolicyReport.ObjectMeta.Labels
 		oldClusterPolicyReport.ObjectMeta.OwnerReferences = clusterPolicyReport.ObjectMeta.OwnerReferences
 		oldClusterPolicyReport.Scope = clusterPolicyReport.Scope
 		oldClusterPolicyReport.Summary = clusterPolicyReport.Summary
 		oldClusterPolicyReport.Results = clusterPolicyReport.Results
 
-		return nil
-	})
-	if err != nil {
-		return err
+		return s.client.Update(ctx, oldClusterPolicyReport)
 	}
 
-	log.Debug().Dict("dict", zerolog.Dict()).
-		Str("report name", clusterPolicyReport.GetName()).
-		Str("report version", clusterPolicyReport.GetResourceVersion()).
-		Str("resource name", clusterPolicyReport.Scope.Name).
-		Str("resource namespace", clusterPolicyReport.Scope.Namespace).
-		Str("resource version", clusterPolicyReport.Scope.ResourceVersion).
-		Msgf("ClusterPolicyReport %s", operation)
-
-	return nil
+	return s.client.Create(ctx, clusterPolicyReport)
 }
