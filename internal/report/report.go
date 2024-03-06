@@ -1,8 +1,6 @@
 package report
 
 import (
-	"time"
-
 	policiesv1 "github.com/kubewarden/kubewarden-controller/pkg/apis/policies/v1"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -50,12 +48,8 @@ func NewPolicyReport(resource unstructured.Unstructured) *wgpolicy.PolicyReport 
 // AddResultToPolicyReport adds a result to a PolicyReport and updates the summary
 func AddResultToPolicyReport(
 	policyReport *wgpolicy.PolicyReport,
-	policy policiesv1.Policy,
-	admissionReview *admissionv1.AdmissionReview,
-	errored bool,
+	result *wgpolicy.PolicyReportResult,
 ) *wgpolicy.PolicyReportResult {
-	now := metav1.Timestamp{Seconds: time.Now().Unix()}
-	result := newPolicyReportResult(policy, admissionReview, errored, now)
 	switch result.Result {
 	case statusFail:
 		policyReport.Summary.Fail++
@@ -67,6 +61,24 @@ func AddResultToPolicyReport(
 	policyReport.Results = append(policyReport.Results, result)
 
 	return result
+}
+
+func FindPolicyReportResultByResourceAndPolicy(policyReport *wgpolicy.PolicyReport, policy policiesv1.Policy, resource unstructured.Unstructured) *wgpolicy.PolicyReportResult {
+	if policyReport.Scope.UID != resource.GetUID() {
+		return nil
+	}
+
+	if policyReport.Scope.ResourceVersion != resource.GetResourceVersion() {
+		return nil
+	}
+
+	for _, result := range policyReport.Results {
+		if result.Properties[propertyPolicyUID] == string(policy.GetUID()) && result.Properties[propertyPolicyResourceVersion] == policy.GetResourceVersion() {
+			return result
+		}
+	}
+
+	return nil
 }
 
 // NewClusterPolicyReport creates a new ClusterPolicyReport from a given resource
@@ -106,12 +118,8 @@ func NewClusterPolicyReport(resource unstructured.Unstructured) *wgpolicy.Cluste
 // AddResultToClusterPolicyReport adds a result to a ClusterPolicyReport and updates the summary
 func AddResultToClusterPolicyReport(
 	policyReport *wgpolicy.ClusterPolicyReport,
-	policy policiesv1.Policy,
-	admissionReview *admissionv1.AdmissionReview,
-	errored bool,
+	result *wgpolicy.PolicyReportResult,
 ) *wgpolicy.PolicyReportResult {
-	now := metav1.Timestamp{Seconds: time.Now().Unix()}
-	result := newPolicyReportResult(policy, admissionReview, errored, now)
 	switch result.Result {
 	case statusFail:
 		policyReport.Summary.Fail++
@@ -125,7 +133,26 @@ func AddResultToClusterPolicyReport(
 	return result
 }
 
-func newPolicyReportResult(policy policiesv1.Policy, admissionReview *admissionv1.AdmissionReview, errored bool, timestamp metav1.Timestamp) *wgpolicy.PolicyReportResult {
+func FindClusterPolicyReportResultByResourceAndPolicy(clusterPolicyReport *wgpolicy.ClusterPolicyReport, policy policiesv1.Policy, resource unstructured.Unstructured) *wgpolicy.PolicyReportResult {
+	if clusterPolicyReport.Scope.UID != resource.GetUID() {
+		return nil
+	}
+
+	if clusterPolicyReport.Scope.ResourceVersion != resource.GetResourceVersion() {
+		return nil
+	}
+
+	for _, result := range clusterPolicyReport.Results {
+		if result.Properties[propertyPolicyUID] == string(policy.GetUID()) && result.Properties[propertyPolicyResourceVersion] == policy.GetResourceVersion() {
+			return result
+		}
+	}
+
+	return nil
+}
+
+// NewPolicyReportResult creates a new PolicyReportResult from a given policy and admission review
+func NewPolicyReportResult(policy policiesv1.Policy, admissionReview *admissionv1.AdmissionReview, errored bool, timestamp metav1.Timestamp) *wgpolicy.PolicyReportResult {
 	var category string
 	if c, present := policy.GetCategory(); present {
 		category = c
@@ -194,7 +221,7 @@ func computeProperties(policy policiesv1.Policy) map[string]string {
 	// same result can be reused in the next scan
 	// https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
 	properties[propertyPolicyResourceVersion] = policy.GetResourceVersion()
-	properties[PropertyPolicyUID] = string(policy.GetUID())
+	properties[propertyPolicyUID] = string(policy.GetUID())
 
 	return properties
 }

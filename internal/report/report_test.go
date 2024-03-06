@@ -7,6 +7,7 @@ import (
 	policiesv1 "github.com/kubewarden/kubewarden-controller/pkg/apis/policies/v1"
 	"github.com/stretchr/testify/assert"
 	admissionv1 "k8s.io/api/admission/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -52,13 +53,171 @@ func TestAddResultToPolicyReport(t *testing.T) {
 	}
 
 	policyReport := NewPolicyReport(unstructured.Unstructured{})
-	AddResultToPolicyReport(policyReport, policy, admissionReview, false)
+	result := NewPolicyReportResult(policy, admissionReview, false, metav1.Timestamp{Seconds: time.Now().Unix()})
+	AddResultToPolicyReport(policyReport, result)
 
 	assert.Len(t, policyReport.Results, 1)
 	assert.Equal(t, 1, policyReport.Summary.Pass)
 	assert.Equal(t, 0, policyReport.Summary.Fail)
 	assert.Equal(t, 0, policyReport.Summary.Warn)
 	assert.Equal(t, 0, policyReport.Summary.Error)
+}
+
+//nolint:dupl
+func TestFindPolicyReportResultByResourceAndPolicy(t *testing.T) {
+	tests := []struct {
+		name           string
+		policyReport   *wgpolicy.PolicyReport
+		policy         policiesv1.Policy
+		resource       unstructured.Unstructured
+		expectedResult *wgpolicy.PolicyReportResult
+	}{
+		{
+			name: "result found",
+			policyReport: &wgpolicy.PolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.AdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "456",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: &wgpolicy.PolicyReportResult{
+				Properties: map[string]string{
+					"policy-uid":              "policy-uid",
+					"policy-resource-version": "456",
+				},
+				Result: statusPass,
+			},
+		},
+		{
+			name: "result not found, resource has a different resourceVersion",
+			policyReport: &wgpolicy.PolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.AdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "456",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "789",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+		{
+			name: "result not found, policy has a different resourceVersion",
+			policyReport: &wgpolicy.PolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.ClusterAdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "789",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+		{
+			name: "result not found, policy was never audited",
+			policyReport: &wgpolicy.PolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "other-policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.AdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "789",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := FindPolicyReportResultByResourceAndPolicy(test.policyReport, test.policy, test.resource)
+			assert.Equal(t, test.expectedResult, result)
+		})
+	}
 }
 
 func TestNewClusterPolicyReport(t *testing.T) {
@@ -98,13 +257,171 @@ func TestAddResultToClusterPolicyReport(t *testing.T) {
 	}
 
 	clusterPolicyReport := NewClusterPolicyReport(unstructured.Unstructured{})
-	AddResultToClusterPolicyReport(clusterPolicyReport, policy, admissionReview, false)
+	result := NewPolicyReportResult(policy, admissionReview, false, metav1.Timestamp{Seconds: time.Now().Unix()})
+	AddResultToClusterPolicyReport(clusterPolicyReport, result)
 
 	assert.Len(t, clusterPolicyReport.Results, 1)
 	assert.Equal(t, 0, clusterPolicyReport.Summary.Pass)
 	assert.Equal(t, 1, clusterPolicyReport.Summary.Fail)
 	assert.Equal(t, 0, clusterPolicyReport.Summary.Warn)
 	assert.Equal(t, 0, clusterPolicyReport.Summary.Error)
+}
+
+//nolint:dupl
+func TestFindClusterPolicyReportResultByResourceAndPolicy(t *testing.T) {
+	tests := []struct {
+		name                string
+		clusterPolicyReport *wgpolicy.ClusterPolicyReport
+		policy              policiesv1.Policy
+		resource            unstructured.Unstructured
+		expectedResult      *wgpolicy.PolicyReportResult
+	}{
+		{
+			name: "result found",
+			clusterPolicyReport: &wgpolicy.ClusterPolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.ClusterAdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "456",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: &wgpolicy.PolicyReportResult{
+				Properties: map[string]string{
+					"policy-uid":              "policy-uid",
+					"policy-resource-version": "456",
+				},
+				Result: statusPass,
+			},
+		},
+		{
+			name: "result not found, resource has a different resourceVersion",
+			clusterPolicyReport: &wgpolicy.ClusterPolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.ClusterAdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "456",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "789",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+		{
+			name: "result not found, policy has a different resourceVersion",
+			clusterPolicyReport: &wgpolicy.ClusterPolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.ClusterAdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "789",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+		{
+			name: "result not found, policy was never audited",
+			clusterPolicyReport: &wgpolicy.ClusterPolicyReport{
+				Scope: &corev1.ObjectReference{
+					UID:             "resource-uid",
+					ResourceVersion: "123",
+				},
+				Results: []*wgpolicy.PolicyReportResult{
+					{
+						Properties: map[string]string{
+							"policy-uid":              "other-policy-uid",
+							"policy-resource-version": "456",
+						},
+						Result: statusPass,
+					},
+				},
+			},
+			policy: &policiesv1.ClusterAdmissionPolicy{
+				ObjectMeta: metav1.ObjectMeta{
+					UID:             "policy-uid",
+					ResourceVersion: "789",
+				},
+			},
+			resource: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"uid":             "resource-uid",
+						"resourceVersion": "123",
+					},
+				},
+			},
+			expectedResult: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := FindClusterPolicyReportResultByResourceAndPolicy(test.clusterPolicyReport, test.policy, test.resource)
+			assert.Equal(t, test.expectedResult, result)
+		})
+	}
 }
 
 func TestNewPolicyReportResult(t *testing.T) {
@@ -151,7 +468,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 				SubjectSelector: &metav1.LabelSelector{},
 				Description:     "",
 				Properties: map[string]string{
-					PropertyPolicyUID:             "policy-uid",
+					propertyPolicyUID:             "policy-uid",
 					propertyPolicyResourceVersion: "1",
 					typeValidating:                valueTypeTrue,
 				},
@@ -192,7 +509,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 				SubjectSelector: &metav1.LabelSelector{},
 				Description:     "The request was rejected",
 				Properties: map[string]string{
-					PropertyPolicyUID:             "policy-uid",
+					propertyPolicyUID:             "policy-uid",
 					propertyPolicyResourceVersion: "1",
 					typeMutating:                  valueTypeTrue,
 				},
@@ -229,7 +546,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 				SubjectSelector: &metav1.LabelSelector{},
 				Description:     "",
 				Properties: map[string]string{
-					PropertyPolicyUID:             "policy-uid",
+					propertyPolicyUID:             "policy-uid",
 					propertyPolicyResourceVersion: "1",
 					typeValidating:                valueTypeTrue,
 				},
@@ -239,7 +556,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := newPolicyReportResult(test.policy, test.amissionReview, test.errored, now)
+			result := NewPolicyReportResult(test.policy, test.amissionReview, test.errored, now)
 			assert.Equal(t, test.expectedResult, result)
 		})
 	}
