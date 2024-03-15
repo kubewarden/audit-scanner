@@ -181,7 +181,7 @@ func newPolicyReportResult(policy policiesv1.Policy, admissionReview *admissionv
 		Source:          policyReportSource,
 		Policy:          getParsablePolicyName(policy), // {cap_,ap_<ns name>}_<policy name>
 		Category:        category,
-		Severity:        computePolicyResultSeverity(policy),           // either info for monitor or empty
+		Severity:        computePolicyResultSeverity(policy),           // either info for monitor or policy's severity
 		Timestamp:       timestamp,                                     // time the result was computed
 		Result:          computePolicyResult(errored, admissionReview), // pass, fail, error
 		Scored:          true,
