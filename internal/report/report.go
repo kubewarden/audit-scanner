@@ -3,11 +3,13 @@ package report
 import (
 	"time"
 
+	"github.com/kubewarden/audit-scanner/internal/constants"
 	policiesv1 "github.com/kubewarden/kubewarden-controller/pkg/apis/policies/v1"
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	wgpolicy "sigs.k8s.io/wg-policy-prototypes/policy-report/pkg/api/wgpolicyk8s.io/v1alpha2"
 )
 
@@ -125,6 +127,41 @@ func AddResultToClusterPolicyReport(
 	return result
 }
 
+// getParsablePolicyName returns the unique policy name in the form of:
+//
+//	cap_<policy name> for clusteradmissionpolicies
+//	ap_<namespace name>_<policy name> for admissionpolicies
+//
+// This is different than policy.GetUniqueName(), which returns a string in the
+// form of:
+//
+//	{clusterwide,namespaced-<ns name>}-<policy name>
+//
+// This, while unique, doesn't allow to parse the ns and policy name, as
+// namespaces can include dashes, hence one doesn't know where the namespace
+// ends and where the name starts. Example:
+//
+//	namespaced-my-pretty-namespace-foo-bar-policy
+func getParsablePolicyName(policy policiesv1.Policy) string {
+	switch policy.GetObjectKind().GroupVersionKind() {
+	case schema.GroupVersionKind{
+		Group:   constants.KubewardenPoliciesGroup,
+		Version: constants.KubewardenPoliciesVersion,
+		Kind:    constants.KubewardenKindClusterAdmissionPolicy,
+	}:
+		return "cap_" + policy.GetName()
+	case schema.GroupVersionKind{
+		Group:   constants.KubewardenPoliciesGroup,
+		Version: constants.KubewardenPoliciesVersion,
+		Kind:    constants.KubewardenKindAdmissionPolicy,
+	}:
+		return "ap_" + policy.GetNamespace() + "_" + policy.GetName()
+	default:
+		// this should never happen
+		return ""
+	}
+}
+
 func newPolicyReportResult(policy policiesv1.Policy, admissionReview *admissionv1.AdmissionReview, errored bool, timestamp metav1.Timestamp) *wgpolicy.PolicyReportResult {
 	var category string
 	if c, present := policy.GetCategory(); present {
@@ -142,7 +179,7 @@ func newPolicyReportResult(policy policiesv1.Policy, admissionReview *admissionv
 
 	return &wgpolicy.PolicyReportResult{
 		Source:          policyReportSource,
-		Policy:          policy.GetUniqueName(),
+		Policy:          getParsablePolicyName(policy), // {cap_,ap_<ns name>}_<policy name>
 		Category:        category,
 		Severity:        computePolicyResultSeverity(policy),           // either info for monitor or empty
 		Timestamp:       timestamp,                                     // time the result was computed

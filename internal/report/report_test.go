@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kubewarden/audit-scanner/internal/constants"
 	policiesv1 "github.com/kubewarden/kubewarden-controller/pkg/apis/policies/v1"
 	"github.com/stretchr/testify/assert"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -128,6 +129,10 @@ func TestNewPolicyReportResult(t *testing.T) {
 						policiesv1.AnnotationSeverity: severityLow,
 					},
 				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       constants.KubewardenKindClusterAdmissionPolicy,
+					APIVersion: constants.KubewardenPoliciesGroup + "/" + constants.KubewardenPoliciesVersion,
+				},
 				Spec: policiesv1.ClusterAdmissionPolicySpec{
 					PolicySpec: policiesv1.PolicySpec{
 						Mutating: false,
@@ -143,7 +148,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 			errored: false,
 			expectedResult: &wgpolicy.PolicyReportResult{
 				Source:          policyReportSource,
-				Policy:          "clusterwide-policy-name",
+				Policy:          "cap_policy-name",
 				Severity:        severityLow,
 				Result:          statusPass,
 				Timestamp:       now,
@@ -169,6 +174,10 @@ func TestNewPolicyReportResult(t *testing.T) {
 						policiesv1.AnnotationSeverity: severityCritical,
 					},
 				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       constants.KubewardenKindAdmissionPolicy,
+					APIVersion: constants.KubewardenPoliciesGroup + "/" + constants.KubewardenPoliciesVersion,
+				},
 				Spec: policiesv1.AdmissionPolicySpec{
 					PolicySpec: policiesv1.PolicySpec{
 						Mutating: true,
@@ -184,7 +193,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 			errored: false,
 			expectedResult: &wgpolicy.PolicyReportResult{
 				Source:          policyReportSource,
-				Policy:          "namespaced-policy-namespace-policy-name",
+				Policy:          "ap_policy-namespace_policy-name",
 				Severity:        severityCritical,
 				Result:          statusFail,
 				Timestamp:       now,
@@ -210,6 +219,10 @@ func TestNewPolicyReportResult(t *testing.T) {
 						policiesv1.AnnotationSeverity: severityInfo,
 					},
 				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       constants.KubewardenKindAdmissionPolicy,
+					APIVersion: constants.KubewardenPoliciesGroup + "/" + constants.KubewardenPoliciesVersion,
+				},
 				Spec: policiesv1.AdmissionPolicySpec{
 					PolicySpec: policiesv1.PolicySpec{
 						Mutating: false,
@@ -221,7 +234,7 @@ func TestNewPolicyReportResult(t *testing.T) {
 			errored:        true,
 			expectedResult: &wgpolicy.PolicyReportResult{
 				Source:          policyReportSource,
-				Policy:          "namespaced-policy-namespace-policy-name",
+				Policy:          "ap_policy-namespace_policy-name",
 				Severity:        severityInfo,
 				Result:          statusError,
 				Timestamp:       now,
