@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +18,6 @@ import (
 	auditscheme "github.com/kubewarden/audit-scanner/internal/scheme"
 	"github.com/kubewarden/audit-scanner/internal/testutils"
 	policiesv1 "github.com/kubewarden/kubewarden-controller/api/policies/v1"
-	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -846,7 +846,8 @@ func TestScanWithMTLS(t *testing.T) {
 	err = client.Get(context.TODO(), types.NamespacedName{Name: string(pod.GetUID()), Namespace: "namespace"}, &podPolicyReport)
 	require.NoError(t, err)
 
-	log.Debug().Any("podPolicyReport", podPolicyReport).Msg("podPolicyReport")
+	slog.Debug("podPolicyReport",
+		slog.Any("podPolicyReport", podPolicyReport))
 
 	assert.Equal(t, 1, podPolicyReport.Summary.Pass)
 	assert.Equal(t, 0, podPolicyReport.Summary.Error)

@@ -3,9 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	corev1 "k8s.io/api/core/v1"
 	apimachineryerrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,19 +50,17 @@ func (f *Client) GetResources(gvr schema.GroupVersionResource, nsName string) (*
 
 		resources, err := f.listResources(ctx, gvr, nsName, opts)
 		if apimachineryerrors.IsNotFound(err) {
-			log.Warn().
-				Dict("dict", zerolog.Dict().
-					Str("resource-GVK", gvr.String()).
-					Str("ns", nsName),
-				).Msg("API resource not found")
+			slog.Warn("API resource not found",
+				slog.Group("dict",
+					slog.String("resource-GVK", gvr.String()),
+					slog.String("ns", nsName)))
 		}
 		if apimachineryerrors.IsForbidden(err) {
 			// ServiceAccount lacks permissions, GVK may not exist, or policies may be misconfigured
-			log.Warn().
-				Dict("dict", zerolog.Dict().
-					Str("resource-GVK", gvr.String()).
-					Str("ns", nsName),
-				).Msg("API resource forbidden, unknown GVK or ServiceAccount lacks permissions")
+			slog.Warn("API resource forbidden, unknown GVK or ServiceAccount lacks permissions",
+				slog.Group("dict",
+					slog.String("resource-GVK", gvr.String()),
+					slog.String("ns", nsName)))
 		}
 		if err != nil {
 			return nil, err
@@ -97,7 +94,7 @@ func (f *Client) GetAuditedNamespaces(ctx context.Context) (*corev1.NamespaceLis
 	skipNsFields := fields.Everything()
 	for _, nsName := range f.skippedNs {
 		skipNsFields = fields.AndSelectors(skipNsFields, fields.OneTermNotEqualSelector("metadata.name", nsName))
-		log.Debug().Str("ns", nsName).Msg("skipping ns")
+		slog.Debug("skipping ns", slog.String("ns", nsName))
 	}
 
 	namespaceList, err := f.clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{FieldSelector: skipNsFields.String()})
