@@ -364,7 +364,7 @@ func TestScanAllNamespacesWithPolicyReport(t *testing.T) {
 		pod2,
 		namespace1,
 		oldPolicyReport)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace1,
 		namespace2,
 	)
@@ -573,7 +573,7 @@ func TestScanClusterWideResourcesWithPolicyReport(t *testing.T) {
 		namespace2,
 		oldClusterPolicyReport,
 	)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace1,
 		namespace2,
 	)
@@ -691,7 +691,7 @@ func TestScanWithHTTPErrors(t *testing.T) {
 		namespace,
 		pod,
 	)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace,
 	)
 	client, err := testutils.NewFakeClient(
@@ -814,7 +814,7 @@ func TestScanWithMTLS(t *testing.T) {
 		namespace,
 		pod,
 	)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace,
 	)
 	client, err := testutils.NewFakeClient(
@@ -944,7 +944,7 @@ func TestScanFailureClusterWideResources(t *testing.T) {
 		webhook2,
 		oldClusterPolicyReport,
 	)
-	clientset := fake.NewSimpleClientset()
+	clientset := fake.NewClientset()
 	client, err := testutils.NewFakeClient(
 		namespace1,
 		webhook1,
@@ -1218,7 +1218,7 @@ func TestScanFailureAllNamespaces(t *testing.T) {
 		pod2,
 		namespace1,
 		oldPolicyReport)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace1,
 		namespace2,
 	)
@@ -1525,7 +1525,7 @@ func TestScanAllNamespacesWithOpenReport(t *testing.T) {
 		pod2,
 		namespace1,
 		oldPolicyReport)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace1,
 		namespace2,
 	)
@@ -1733,7 +1733,7 @@ func TestScanClusterWideResourcesWithOpenReport(t *testing.T) {
 		namespace2,
 		oldClusterPolicyReport,
 	)
-	clientset := fake.NewSimpleClientset(
+	clientset := fake.NewClientset(
 		namespace1,
 		namespace2,
 	)
